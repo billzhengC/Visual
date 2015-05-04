@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.StringTokenizer;
@@ -70,17 +71,19 @@ class GTFSParser {
 				this.tripid = tripid;
 			}
 		}
-		HashMap<String,Tuple> stopIdTupleMap = new HashMap<String,Tuple>(); 
+		HashMap<String,ArrayList<Tuple>> stopIdTupleMap = new HashMap<String,ArrayList<Tuple>>(); 
 		// import time of each stop
 		for (Map<String,String> stoptime: stoptimeList) {
 			String tripid = stoptime.get("trip_id");
+			String stopid = stoptime.get("stop_id");
 			Long time = toElapsedTime(stoptime.get("departure_time"));
-					if (trajMap.get(tripid)==null) System.out.println("NULL!!!!!  " + tripid); //****TEST
 			trajMap.get(tripid).trajectory.put(time, null);
 			// fill the intermediate map
-			Tuple timeTripId = new Tuple(time,tripid);
-			String stopid = stoptime.get("stop_id");
-			stopIdTupleMap.put(stopid, timeTripId);
+			ArrayList<Tuple> temp_arrL;
+			if (stopIdTupleMap.get(stopid)==null) temp_arrL = new ArrayList<Tuple>();
+			else temp_arrL = stopIdTupleMap.get(stopid);
+			temp_arrL.add(new Tuple(time,tripid));
+			stopIdTupleMap.put(stopid, temp_arrL);
 		}
 		// import location of each stop
 		for (Map<String,String> stop: stopList) {
@@ -89,11 +92,16 @@ class GTFSParser {
 			double stop_lon = Double.parseDouble(stop.get("stop_lon"));
 			Coordinate loc = new Coordinate(stop_lon,stop_lat);
 				if (stopIdTupleMap.get(stopid)==null) continue; //****TEST
-			String tripid = stopIdTupleMap.get(stopid).tripid;
-			Long time = stopIdTupleMap.get(stopid).time;
-			trajMap.get(tripid).trajectory.put(time, loc);
+			ArrayList<Tuple> tupleList= stopIdTupleMap.get(stopid);
+			for (Tuple t:tupleList ) {
+				String tripid = t.tripid;
+				Long time = t.time;
+				trajMap.get(tripid).trajectory.put(time, loc);
+			}
 		}
-		// construct a shape_id --> coordinates map
+
+		
+/*		// construct a shape_id --> coordinates map
 		HashMap<String,ArrayList<Coordinate>> shapePointMap = new HashMap<String,ArrayList<Coordinate>>();
 		for (Map<String,String> shape: shapeList) {
 			String shapeid = shape.get("shape_id");
@@ -118,6 +126,11 @@ class GTFSParser {
 				trajMap.get(tripid_temp).trajectory = trajIntoShape(trajMap.get(tripid_temp).trajectory,cos);
 			}
 		}		
+		//**TEST
+		for (Map.Entry<String,Trajectory> entry: trajMap.entrySet()) {
+			System.out.print(entry.getKey()+"  ");
+			System.out.println(entry.getValue().trajectory);
+		}*/
 		return trajMap;
 	}
 	// combine shapes and stops
@@ -125,6 +138,11 @@ class GTFSParser {
 		SortedMap<Long,Coordinate> mapProcessed = new TreeMap<Long,Coordinate>();
 		// TODO: get stops projections and insert them into Shape Coordiates; then, get time for shape cos 
 		return mapProcessed;
+	}
+	
+	public static Coordinate getLinearCoordinate(Coordinate a,Long ta, Coordinate b, Long tb, Long t) {
+		return new Coordinate(a.x+(t-ta)*(b.x-a.x)/(tb-ta),a.y+(t-ta)*(b.y-a.y)/(tb-ta));
+		
 	}
 	
 	
@@ -147,17 +165,48 @@ class Trajectory {
 	}   
 	SortedMap<Long,Coordinate> trajectory = new TreeMap<Long,Coordinate>();
 	
-//	Coordinate getPosition(Long time) {
-//		
-//	}
-//	boolean isActive(Long time) {
-//		
-//	}
+	Coordinate getPosition(Long time) {
+		if (!this.isActive(time)) return null;
+		Coordinate coor = null;
+		Long thisTime, nextTime;
+		Iterator<Long> keyItr= trajectory.keySet().iterator();
+		thisTime = keyItr.next();
+		while (keyItr.hasNext()) {
+			nextTime = keyItr.next();
+			if (time<nextTime) 
+				coor = GTFSParser.getLinearCoordinate(trajectory.get(thisTime),thisTime,trajectory.get(nextTime),nextTime,time);
+			thisTime = nextTime;
+		}
+		return coor;
+	}
+	boolean isActive(Long time) {
+		if (trajectory.firstKey() <= time && time<=trajectory.lastKey()) return true;
+		else return false;
+	}
 }
 
 class Transit {
-	ArrayList<Trajectory> alltraj;
-//	ArrayList<Trajectory> activeTrajectories(Long time) {
-//		
-//	}
+	public static ArrayList<Trajectory> allTraj;
+	public static HashMap<String,Long> tripTimeStartMap = new HashMap<String,Long>();
+	public static HashMap<String,Long> tripTimeEndMap = new HashMap<String,Long>();
+	public static void intializeTripTimeMap() {
+		for (Trajectory t:allTraj) {
+			String tripid = t.trip_id;
+			Long timeStart = new Long(t.trajectory.firstKey());
+			Long timeEnd = new Long(t.trajectory.lastKey());
+			tripTimeStartMap.put(tripid, timeStart);
+			tripTimeEndMap.put(tripid, timeEnd);
+		}
+	}
+	public static ArrayList<Trajectory> activeTrajectories(Long time) {
+		ArrayList<Trajectory> activeTraj = new ArrayList<Trajectory>();
+		for (Trajectory traj: allTraj) {
+			Long timeStart = tripTimeStartMap.get(traj.trip_id);
+			Long timeEnd = tripTimeEndMap.get(traj.trip_id);
+			if (timeStart<=time && time<=timeEnd) {
+				activeTraj.add(traj);
+			}
+		}
+		return activeTraj;
+	}
 }
