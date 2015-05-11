@@ -24,6 +24,7 @@ import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
+import org.geotools.geometry.GeometryBuilder;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.map.FeatureLayer;
@@ -37,8 +38,10 @@ import org.geotools.swing.JMapFrame;
 import org.geotools.swing.data.JFileDataStoreChooser;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
+import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.TransformException;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -71,14 +74,14 @@ public class GTFS implements ActionListener {
 	/*
 	 * start the simuation of moving vehicles, which creates a window of the map
 	 */
-	private void start() throws IOException {
+	private void start() throws IOException, FactoryException {
 		timer = new Timer(2000, this);
 		timer.setInitialDelay(0);
 		// Set CSV file
-		Data.intialzeCSVFile();
+		Data.intializeCSVFile();
+		Data.intializeCRS();
 		// Get coordinates using GTFS parser
-		HashMap<String, Trajectory> myTrajMap = GTFSParser
-				.parseTrips(Data.csvFiles);
+		HashMap<String, Trajectory> myTrajMap = GTFSParser.parseTrips(Data.csvFiles);
 		// put coords into Transit Class
 		Transit.allTraj = new ArrayList<Trajectory>(myTrajMap.values());
 		Transit.intializeTripTimeMap();
@@ -91,8 +94,7 @@ public class GTFS implements ActionListener {
 		map = new MapContent();
 		map.setTitle("Test");
 		/*
-		 * // import world Layer world =
-		 * layerFromShapeFile(Data.WORLD,Color.BLACK,Color.GRAY);
+		 * // import world Layer world = layerFromShapeFile(Data.WORLD,Color.BLACK,Color.GRAY);
 		 * map.addLayer(world);
 		 */
 
@@ -150,24 +152,23 @@ public class GTFS implements ActionListener {
 	/* 
 	 * Given a current time, display the potions of all the active vehicles in the map
 	 */
-	void showCurPoints() {
+	void showCurPoints() throws FactoryException, TransformException {
 		// Create a Geometry factory
-		GeometryFactory gf = new GeometryFactory();
+		GeometryBuilder gf = new GeometryBuilder(DefaultGeographicCRS.WGS84);
 
 		// Create a FeatureCollection and put coordList into it
 		DefaultFeatureCollection featureCollection = new DefaultFeatureCollection();
 		// put coorList
-		ArrayList<Coordinate> coorList = new ArrayList<Coordinate>();
+		ArrayList<Point> pointsList = new ArrayList<Point>();
 		for (Trajectory t1 : Transit.activeTrajectories(currentTime)) {
 //			for (Map.Entry<Long, Coordinate> entry2 : t1.trajectory.entrySet()) {
 //				coorList.add(entry2.getValue());
 //			}
-			coorList.add(t1.getPosition(currentTime));
+			pointsList.add(t1.getPosition(currentTime));
 		}
 		// create featurecollection
 		int index = 0;
-		for (Coordinate coorToFeature : coorList) {
-			Point pointToFeature = coorToPoint(coorToFeature, gf);
+		for (Point pointToFeature : pointsList) {
 			featureCollection = addFeature(featureCollection, featureBuilder,
 					String.valueOf(index++), pointToFeature);
 		}
@@ -196,7 +197,14 @@ public class GTFS implements ActionListener {
 				timeChangeFlag = false;
 				System.out.println("Stops");
 			} else
-				showCurPoints();
+				try {
+					showCurPoints();
+				} catch (FactoryException e1) {
+					e1.printStackTrace();
+				} catch (TransformException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 
 		}
 
@@ -219,8 +227,8 @@ public class GTFS implements ActionListener {
 	/*
 	 * Conver a Coordinate into a Point
 	 */
-	private Point coorToPoint(Coordinate coor, GeometryFactory gf) {
-		return gf.createPoint(coor);
+	private Point coorToPoint(Coordinate coor, GeometryBuilder gf) {
+		return (Point) gf.createPoint(coor.x,coor.y);
 	}
 	
 	/*
