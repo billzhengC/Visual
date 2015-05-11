@@ -24,7 +24,6 @@ import org.geotools.data.simple.SimpleFeatureSource;
 import org.geotools.feature.DefaultFeatureCollection;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
-import org.geotools.geometry.GeometryBuilder;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.geometry.jts.JTSFactoryFinder;
 import org.geotools.map.FeatureLayer;
@@ -38,10 +37,8 @@ import org.geotools.swing.JMapFrame;
 import org.geotools.swing.data.JFileDataStoreChooser;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
-import org.opengis.referencing.operation.TransformException;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -74,14 +71,14 @@ public class GTFS implements ActionListener {
 	/*
 	 * start the simuation of moving vehicles, which creates a window of the map
 	 */
-	private void start() throws IOException, FactoryException {
+	private void start() throws IOException {
 		timer = new Timer(2000, this);
 		timer.setInitialDelay(0);
 		// Set CSV file
-		Data.intializeCSVFile();
-		Data.intializeCRS();
+		Data.intialzeCSVFile();
 		// Get coordinates using GTFS parser
-		HashMap<String, Trajectory> myTrajMap = GTFSParser.parseTrips(Data.csvFiles);
+		HashMap<String, Trajectory> myTrajMap = GTFSParser
+				.parseTrips(Data.csvFiles);
 		// put coords into Transit Class
 		Transit.allTraj = new ArrayList<Trajectory>(myTrajMap.values());
 		Transit.intializeTripTimeMap();
@@ -94,7 +91,8 @@ public class GTFS implements ActionListener {
 		map = new MapContent();
 		map.setTitle("Test");
 		/*
-		 * // import world Layer world = layerFromShapeFile(Data.WORLD,Color.BLACK,Color.GRAY);
+		 * // import world Layer world =
+		 * layerFromShapeFile(Data.WORLD,Color.BLACK,Color.GRAY);
 		 * map.addLayer(world);
 		 */
 
@@ -152,23 +150,24 @@ public class GTFS implements ActionListener {
 	/* 
 	 * Given a current time, display the potions of all the active vehicles in the map
 	 */
-	void showCurPoints() throws FactoryException, TransformException {
+	void showCurPoints() {
 		// Create a Geometry factory
-		GeometryBuilder gf = new GeometryBuilder(DefaultGeographicCRS.WGS84);
+		GeometryFactory gf = new GeometryFactory();
 
 		// Create a FeatureCollection and put coordList into it
 		DefaultFeatureCollection featureCollection = new DefaultFeatureCollection();
 		// put coorList
-		ArrayList<Point> pointsList = new ArrayList<Point>();
+		ArrayList<Coordinate> coorList = new ArrayList<Coordinate>();
 		for (Trajectory t1 : Transit.activeTrajectories(currentTime)) {
 //			for (Map.Entry<Long, Coordinate> entry2 : t1.trajectory.entrySet()) {
 //				coorList.add(entry2.getValue());
 //			}
-			pointsList.add(t1.getPosition(currentTime));
+			coorList.add(t1.getPosition(currentTime));
 		}
 		// create featurecollection
 		int index = 0;
-		for (Point pointToFeature : pointsList) {
+		for (Coordinate coorToFeature : coorList) {
+			Point pointToFeature = coorToPoint(coorToFeature, gf);
 			featureCollection = addFeature(featureCollection, featureBuilder,
 					String.valueOf(index++), pointToFeature);
 		}
@@ -197,14 +196,7 @@ public class GTFS implements ActionListener {
 				timeChangeFlag = false;
 				System.out.println("Stops");
 			} else
-				try {
-					showCurPoints();
-				} catch (FactoryException e1) {
-					e1.printStackTrace();
-				} catch (TransformException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
+				showCurPoints();
 
 		}
 
@@ -227,8 +219,8 @@ public class GTFS implements ActionListener {
 	/*
 	 * Conver a Coordinate into a Point
 	 */
-	private Point coorToPoint(Coordinate coor, GeometryBuilder gf) {
-		return (Point) gf.createPoint(coor.x,coor.y);
+	private Point coorToPoint(Coordinate coor, GeometryFactory gf) {
+		return gf.createPoint(coor);
 	}
 	
 	/*

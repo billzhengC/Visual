@@ -10,16 +10,6 @@ import java.util.SortedMap;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 
-import org.geotools.geometry.GeometryBuilder;
-import org.geotools.geometry.jts.JTS;
-import org.geotools.referencing.CRS;
-import org.geotools.referencing.crs.DefaultGeographicCRS;
-import org.opengis.geometry.MismatchedDimensionException;
-import org.opengis.referencing.FactoryException;
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.opengis.referencing.operation.MathTransform;
-import org.opengis.referencing.operation.TransformException;
-
 import com.opencsv.CSVReader;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -27,7 +17,7 @@ import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.Point;
 
 class GTFSParser {
-	
+	GeometryFactory gf = new GeometryFactory();
 	protected static ArrayList<Map<String,String>> readCSV(Reader csv) throws IOException {
 		ArrayList<Map<String,String>> csvList = new ArrayList<Map<String,String>>();
 		CSVReader myreader = new CSVReader(csv);
@@ -103,15 +93,14 @@ class GTFSParser {
 			String stopid = stop.get("stop_id");
 			double stop_lat = Double.parseDouble(stop.get("stop_lat"));
 			double stop_lon = Double.parseDouble(stop.get("stop_lon"));
-			
-			//Coordinate loc = new Coordinate(stop_lon,stop_lat);
-			Point locPoint = (Point) Data.gbuilderWGS84.createPoint(new double[]{stop_lat,stop_lon}); // TODO: lon/lat order
+			Coordinate loc = new Coordinate(stop_lon,stop_lat);
+			//Point
 				if (stopIdTupleMap.get(stopid)==null) continue; //****TEST
 			ArrayList<Tuple> tupleList= stopIdTupleMap.get(stopid);
 			for (Tuple t:tupleList ) {
 				String tripid = t.tripid;
 				Long time = t.time;
-				trajMap.get(tripid).trajectory.put(time, locPoint);
+				trajMap.get(tripid).trajectory.put(time, loc);
 			}
 		}
 
@@ -155,22 +144,8 @@ class GTFSParser {
 		return mapProcessed;
 	}
 	
-	public static Point getLinearCoordinate(Point a,Long ta, Point b, Long tb, Long t) throws FactoryException, MismatchedDimensionException, TransformException {
-		CoordinateReferenceSystem wgsCRS = CRS.decode( "EPSG:4326" ); // WGS84 CoordinateReferenceSystem
-		CoordinateReferenceSystem merCRS = CRS.decode( "EPSG:3857" ); // Mercator 
-		// Get the transform function MathTransform 
-		MathTransform transform1 = CRS.findMathTransform(wgsCRS, merCRS, true);
-		// transform wgs--> mercator
-		Point aTrans = (Point) JTS.transform(a, transform1);
-		Point bTrans = (Point) JTS.transform(b, transform1);
-		// get linear interpolation in mercator
-		Point temp = (Point) Data.gbuilderMercator.createPoint(aTrans.getX()+(t-ta)*(bTrans.getX()-aTrans.getX())/(tb-ta), aTrans.getY()+(t-ta)*(bTrans.getY()-aTrans.getY())/(tb-ta));
-		// transform back to wgs
-		MathTransform transform2 = CRS.findMathTransform(merCRS, wgsCRS, true);
-		return (Point) JTS.transform(temp, transform2);
-		
-		
-		//return Data.(a.getX()+(t-ta)*(b.getX()-a.getX())/(tb-ta),a.getY()+(t-ta)*(b.getY()-a.getY())/(tb-ta));
+	public static Coordinate getLinearCoordinate(Coordinate a,Long ta, Coordinate b, Long tb, Long t) {
+		return new Coordinate(a.x+(t-ta)*(b.x-a.x)/(tb-ta),a.y+(t-ta)*(b.y-a.y)/(tb-ta));
 		
 	}
 	
@@ -192,11 +167,11 @@ class Trajectory {
 		this.service_id = service_id;
 		this.trip_id = trip_id;
 	}   
-	SortedMap<Long,Point> trajectory = new TreeMap<Long,Point>();
+	SortedMap<Long,Coordinate> trajectory = new TreeMap<Long,Coordinate>();
 	
-	Point getPosition(Long time) throws FactoryException, TransformException {
+	Coordinate getPosition(Long time) {
 		if (!this.isActive(time)) return null;
-		Point coor = null;
+		Coordinate coor = null;
 		Long thisTime, nextTime;
 		Iterator<Long> keyItr= trajectory.keySet().iterator();
 		thisTime = keyItr.next();
