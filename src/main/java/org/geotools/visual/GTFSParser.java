@@ -12,9 +12,12 @@ import java.util.TreeMap;
 
 import com.opencsv.CSVReader;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
+import com.vividsolutions.jts.geom.Point;
 
 class GTFSParser {
+	GeometryFactory gf = new GeometryFactory();
 	protected static ArrayList<Map<String,String>> readCSV(Reader csv) throws IOException {
 		ArrayList<Map<String,String>> csvList = new ArrayList<Map<String,String>>();
 		CSVReader myreader = new CSVReader(csv);
@@ -91,6 +94,7 @@ class GTFSParser {
 			double stop_lat = Double.parseDouble(stop.get("stop_lat"));
 			double stop_lon = Double.parseDouble(stop.get("stop_lon"));
 			Coordinate loc = new Coordinate(stop_lon,stop_lat);
+			//Point
 				if (stopIdTupleMap.get(stopid)==null) continue; //****TEST
 			ArrayList<Tuple> tupleList= stopIdTupleMap.get(stopid);
 			for (Tuple t:tupleList ) {
@@ -174,7 +178,6 @@ class Trajectory {
 		while (keyItr.hasNext()) {
 			nextTime = keyItr.next();
 			if (time<nextTime) 
-				System.out.println("linear coor calculated");
 				coor = GTFSParser.getLinearCoordinate(trajectory.get(thisTime),thisTime,trajectory.get(nextTime),nextTime,time);
 			thisTime = nextTime;
 		}
