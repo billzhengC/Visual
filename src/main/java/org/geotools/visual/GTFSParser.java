@@ -174,6 +174,7 @@ class Trajectory {
 		while (keyItr.hasNext()) {
 			nextTime = keyItr.next();
 			if (time<nextTime) 
+				System.out.println("linear coor calculated");
 				coor = GTFSParser.getLinearCoordinate(trajectory.get(thisTime),thisTime,trajectory.get(nextTime),nextTime,time);
 			thisTime = nextTime;
 		}

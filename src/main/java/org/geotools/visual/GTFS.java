@@ -1,7 +1,9 @@
 package org.geotools.visual;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -13,6 +15,7 @@ import java.util.SortedMap;
 import java.util.Collections;
 
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.Timer;
 
 import org.geotools.data.FileDataStore;
@@ -81,8 +84,8 @@ public class GTFS implements ActionListener{
         map.addLayer(world);*/
         
         // import NYC road
-//        Layer nycroad = layerFromShapeFile(Data.NYCROAD,Color.BLUE,Color.CYAN);
-//        map.addLayer(nycroad);
+        Layer nycroad = layerFromShapeFile(Data.NYCROAD,Color.BLUE,Color.CYAN);
+        map.addLayer(nycroad);
         
      // Create a SimpleFeatureType builder
         SimpleFeatureTypeBuilder b = new SimpleFeatureTypeBuilder();
@@ -108,14 +111,35 @@ public class GTFS implements ActionListener{
         point = (Point) JTS.transform( point , transform );*/
         mapFrame = new JMapFrame();
         //mapFrame.setSize(800,500);
-        mapFrame.setPreferredSize(new Dimension(800,500));
+        //mapFrame.setPreferredSize(new Dimension(800,500));
         mapFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE );
         //mapFrame.enableLayerTable( true );
         mapFrame.enableStatusBar(true);
         mapFrame.enableToolBar(true);
+        mapFrame.setLocationRelativeTo(null);
+        
+/*        // create a label to display the current time
+        JLabel timeLabel = new JLabel("0");
+        timeLabel.setFont(new Font("Serif", Font.PLAIN, 30));
+        timeLabel.setForeground(Color.BLUE);
+        // create main frame
+		JFrame mainFrame = new JFrame();
+		mainFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		mainFrame.setLocationRelativeTo(null);
+		// add time label and mapframe to it
+		mainFrame.setLayout(new BorderLayout());
+		mainFrame.add(mapFrame,BorderLayout.NORTH);
+		mainFrame.add(timeLabel, BorderLayout.SOUTH);
+        mainFrame.setVisible(true); // set visible
+*/        
 		System.out.println("Timer starts");
 		timer.start();
 		currentTime = firstTime;
+		
+
+		
+		
+		
 	}
 	
 	void showCurPoints(){
@@ -144,13 +168,14 @@ public class GTFS implements ActionListener{
         if (currentLayer != null) map.removeLayer(currentLayer);
         currentLayer = layer;
         map.addLayer(layer);
-        mapFrame.pack();
+//        mapFrame.pack();
+        mapFrame.setSize(900, 600);
         mapFrame.setMapContent(map);
         mapFrame.setVisible(true);
 	}
 	public void actionPerformed(ActionEvent e) {
 		if (timeChangeFlag) {
-			currentTime += 3600;
+			currentTime += 60;
 			if (currentTime > lastTime) {
 				timeChangeFlag = false;
 				System.out.println("Stops");

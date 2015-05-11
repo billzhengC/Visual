@@ -4,7 +4,8 @@ import java.util.HashMap;
 
 class Data {
 	public static HashMap<String,String> csvFiles; 
-	public static final String NYCROAD = "data/NYC/shp/roads.shp";
+//	public static final String NYCROAD = "data/NYC/shp/roads.shp";
+	public static final String NYCROAD = "data/NYC/nyctsubwayroutes_100627/nyctsubwayroutes_100627.shp"; 
 	//public static final String WORLD = "data/50m_cultural/ne_50m_admin_0_sovereignty.shp";
 	public static final String WORLD = "data/TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp";	
 	public static void intialzeCSVFile() {

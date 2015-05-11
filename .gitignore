@@ -1,3 +1,8 @@
 *.class
 .jar
 /data
+src/main/java/org/geotools/visual/SelectionLab.java
+
+src/main/java/org/geotools/visual/Quickstart.java
+
+src/main/java/org/geotools/visual/Quickstart.java
