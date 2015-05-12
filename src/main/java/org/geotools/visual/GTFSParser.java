@@ -10,6 +10,14 @@ import java.util.SortedMap;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 
+import org.geotools.geometry.jts.JTS;
+import org.geotools.referencing.CRS;
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.NoSuchAuthorityCodeException;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.TransformException;
+
 import com.opencsv.CSVReader;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -17,7 +25,15 @@ import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.Point;
 
 class GTFSParser {
-	GeometryFactory gf = new GeometryFactory();
+	static ArrayList<Coordinate> shapePointList;
+	static ArrayList<Map<String,String>> tripList;
+	static ArrayList<Map<String,String>> shapeList;
+	static ArrayList<Map<String,String>> serviceList;
+	static ArrayList<Map<String,String>> stopList;
+	static ArrayList<Map<String,String>> stoptimeList;
+	static HashMap<String,Trajectory> trajMap;
+	
+	
 	protected static ArrayList<Map<String,String>> readCSV(Reader csv) throws IOException {
 		ArrayList<Map<String,String>> csvList = new ArrayList<Map<String,String>>();
 		CSVReader myreader = new CSVReader(csv);
@@ -36,14 +52,14 @@ class GTFSParser {
 		return csvList;				
 	}
 	
-	public static HashMap<String,Trajectory> parseTrips(HashMap<String,String> csvFileNames) throws IOException {
-		HashMap<String,Trajectory> trajMap = new HashMap<String,Trajectory>();
+	public static HashMap<String,Trajectory> parseTrips(HashMap<String,String> csvFileNames) throws IOException, FactoryException, TransformException {
+		trajMap = new HashMap<String,Trajectory>();
 		// read input from CSV
-		ArrayList<Map<String,String>> tripList = readCSV(new FileReader(csvFileNames.get("TRIPS")));
-		//ArrayList<Map<String,String>> serviceList = readCSV(new FileReader(csvFileNames.get("CALENDAER")));
-		ArrayList<Map<String,String>> shapeList = readCSV(new FileReader(csvFileNames.get("SHAPES")));
-		ArrayList<Map<String,String>> stopList = readCSV(new FileReader(csvFileNames.get("STOPS")));
-		ArrayList<Map<String,String>> stoptimeList = readCSV(new FileReader(csvFileNames.get("STOPTIMES")));
+		tripList = readCSV(new FileReader(csvFileNames.get("TRIPS")));
+		serviceList = readCSV(new FileReader(csvFileNames.get("CALENDAER")));
+		shapeList = readCSV(new FileReader(csvFileNames.get("SHAPES")));
+		stopList = readCSV(new FileReader(csvFileNames.get("STOPS")));
+		stoptimeList = readCSV(new FileReader(csvFileNames.get("STOPTIMES")));
 		// intermediate product: connection between shapeid and tripid
 		HashMap<String,ArrayList<String>> shapeTripMap = new HashMap<String,ArrayList<String>>(); 
 		//get trip info and create hashmap for all trips 
@@ -81,6 +97,7 @@ class GTFSParser {
 			String stopid = stoptime.get("stop_id");
 			Long time = toElapsedTime(stoptime.get("departure_time"));
 			trajMap.get(tripid).trajectory.put(time, null);
+			trajMap.get(tripid).trajectoryWithName.put(time, null);
 			// fill the intermediate map
 			ArrayList<Tuple> temp_arrL;
 			if (stopIdTupleMap.get(stopid)==null) temp_arrL = new ArrayList<Tuple>();
@@ -93,17 +110,29 @@ class GTFSParser {
 			String stopid = stop.get("stop_id");
 			double stop_lat = Double.parseDouble(stop.get("stop_lat"));
 			double stop_lon = Double.parseDouble(stop.get("stop_lon"));
-			Coordinate loc = new Coordinate(stop_lon,stop_lat);
-			//Point
+			// Coordinate loc = new Coordinate(stop_lon,stop_lat);
+			Coordinate loc = new Coordinate(stop_lat,stop_lon);
+			loc = transCoor(loc);
 				if (stopIdTupleMap.get(stopid)==null) continue; //****TEST
 			ArrayList<Tuple> tupleList= stopIdTupleMap.get(stopid);
 			for (Tuple t:tupleList ) {
 				String tripid = t.tripid;
 				Long time = t.time;
 				trajMap.get(tripid).trajectory.put(time, loc);
+				trajMap.get(tripid).trajectoryWithName.put(time, stop.get("stop_name"));				
 			}
 		}
 
+		
+		shapePointList = new ArrayList<Coordinate>();
+		for (Map<String,String> shape: shapeList) {
+			double shape_lat = Double.parseDouble(shape.get("shape_pt_lat"));
+			double shape_lon = Double.parseDouble(shape.get("shape_pt_lon"));
+			Coordinate loc_temp = transCoor(new Coordinate(shape_lat,shape_lon));
+			shapePointList.add(loc_temp);
+		}
+		
+		
 		
 /*		// construct a shape_id --> coordinates map
 		HashMap<String,ArrayList<Coordinate>> shapePointMap = new HashMap<String,ArrayList<Coordinate>>();
@@ -137,6 +166,10 @@ class GTFSParser {
 		}*/
 		return trajMap;
 	}
+	
+
+	
+	
 	// combine shapes and stops
 	private static SortedMap<Long,Coordinate> trajIntoShape(SortedMap<Long,Coordinate> tmap, ArrayList<Coordinate> cos) {
 		SortedMap<Long,Coordinate> mapProcessed = new TreeMap<Long,Coordinate>();
@@ -144,14 +177,36 @@ class GTFSParser {
 		return mapProcessed;
 	}
 	
-	public static Coordinate getLinearCoordinate(Coordinate a,Long ta, Coordinate b, Long tb, Long t) {
-		return new Coordinate(a.x+(t-ta)*(b.x-a.x)/(tb-ta),a.y+(t-ta)*(b.y-a.y)/(tb-ta));
-		
+	/*
+	 * transfet Coordinate from WGS84 to Mercator
+	 */
+	private static Coordinate transCoor(Coordinate coor) throws FactoryException, TransformException {
+		Coordinate dest = null;
+		CoordinateReferenceSystem wgsCRS = CRS.decode( "EPSG:4326" ); // WGS84 CoordinateReferenceSystem
+		CoordinateReferenceSystem merCRS = CRS.decode( "EPSG:3857" ); // Mercator 
+		MathTransform wgsToMerTransform = CRS.findMathTransform(wgsCRS, merCRS, true);
+		MathTransform merTowgsTransform = CRS.findMathTransform(merCRS, wgsCRS, true);
+		dest = JTS.transform(coor, null, wgsToMerTransform );
+		if (dest==null) System.out.println("nullEXception!!");
+		return dest;
+	}
+	
+	public static Coordinate getLinearCoordinate(Coordinate a,Long ta, Coordinate b, Long tb, Long t){
+/*		CoordinateReferenceSystem wgsCRS = CRS.decode( "EPSG:4326" ); // WGS84 CoordinateReferenceSystem
+		CoordinateReferenceSystem merCRS = CRS.decode( "EPSG:3857" ); // Mercator 
+		MathTransform wgsToMerTransform = CRS.findMathTransform(wgsCRS, merCRS, true);
+		MathTransform merToWgsTransform = CRS.findMathTransform(merCRS, wgsCRS, true);
+		JTS.transform(a,a, wgsToMerTransform);
+		JTS.transform(b,b, wgsToMerTransform);
+		Coordinate dest = new Coordinate(a.x+(t-ta)*(b.x-a.x)/(tb-ta),a.y+(t-ta)*(b.y-a.y)/(tb-ta));
+		JTS.transform(dest,dest, merToWgsTransform);
+		return dest;*/
+		return new Coordinate(a.x+(t-ta)*(b.x-a.x)/(tb-ta),a.y+(t-ta)*(b.y-a.y)/(tb-ta));	
 	}
 	
 	
 	// convert "HH:MM:SS" into the seconds elasped from midnight
-	private static Long toElapsedTime(String time) {
+	public static Long toElapsedTime(String time) {
 		StringTokenizer timeToken = new StringTokenizer(time,":");
 		Long hours = Long.valueOf(timeToken.nextToken());
 		Long mins = Long.valueOf(timeToken.nextToken());
@@ -168,8 +223,9 @@ class Trajectory {
 		this.trip_id = trip_id;
 	}   
 	SortedMap<Long,Coordinate> trajectory = new TreeMap<Long,Coordinate>();
+	SortedMap<Long,String> trajectoryWithName = new TreeMap<Long,String>();
 	
-	Coordinate getPosition(Long time) {
+	Coordinate getPosition(Long time) throws FactoryException, TransformException {
 		if (!this.isActive(time)) return null;
 		Coordinate coor = null;
 		Long thisTime, nextTime;
@@ -177,8 +233,10 @@ class Trajectory {
 		thisTime = keyItr.next();
 		while (keyItr.hasNext()) {
 			nextTime = keyItr.next();
-			if (time<nextTime) 
+			if (time<nextTime) {
 				coor = GTFSParser.getLinearCoordinate(trajectory.get(thisTime),thisTime,trajectory.get(nextTime),nextTime,time);
+				return coor;
+			}
 			thisTime = nextTime;
 		}
 		return coor;
