@@ -50,6 +50,7 @@ class UserPanel {
 		// panel to show the number of active vehicles currently
 		curVehiclePanel.setPreferredSize(new Dimension(width, 100));		
 		vehicleLable = new JLabel("Vehicles in Service: 0");
+		vehicleLable.setHorizontalAlignment(JLabel.CENTER);
 		vehicleLable.setPreferredSize(new Dimension(width, 100));
 		vehicleLable.setFont(new Font("Serif", Font.PLAIN, 25));
 		vehicleLable.setForeground(Color.GREEN);
@@ -58,7 +59,6 @@ class UserPanel {
 		
 		// panel for selecting the vehicle
 		JLabel promptLabel = new JLabel("Selected Vehicle Id:");
-		promptLabel.setHorizontalAlignment(JLabel.LEFT);
 		promptLabel.setFont(new Font("Serif", Font.PLAIN, 20));
 		vehicleIdLabel = new JLabel();
 		vehicleIdLabel.setFont(new Font("Serif", Font.ITALIC|Font.BOLD, 18));
