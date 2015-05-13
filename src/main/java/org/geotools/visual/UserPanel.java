@@ -4,16 +4,10 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 
-import com.vividsolutions.jts.geom.Coordinate;
 
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.Map;
 
 class UserPanel {
@@ -74,11 +68,6 @@ class UserPanel {
 		JScrollPane resultScroll = new JScrollPane(resultText);
 		resultScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 		resultScroll.setPreferredSize(new Dimension(width, 350));
-//		JLabel resultLabel = new JLabel();
-//		resultLabel.setHorizontalAlignment(JTextField.CENTER);
-//		resultLabel.setFont(new Font("Serif", Font.PLAIN, 20));
-//		resultLabel.setPreferredSize(new Dimension(width,350));
-//		resultLabel.setText("Radius = 5km. City Covered: 50%");
 		dataPanel.add(resultScroll);
 		
 		anaFrame.add(curVehiclePanel,BorderLayout.NORTH);
