@@ -3,11 +3,11 @@ package org.geotools.visual;
 import java.util.HashMap;
 
 class Data {
-	public static final String[] weekdayService = {"A20141207WKD","B20141207WKD","R20140615WKD"};
-	public static final String[] satService = {"A20141207SAT","B20141207SAT","R20140615SAT"};
-	public static final String[] sunService = {"A20141207SUN","B20141207SUN","R20140615SUN"};
-	public static final String[] monService = {"S20140615MON"};
+	public static final int frameHeight = 700; // height of the frame
 	
+	/*
+	 * test whether a service id is in service at a given day
+	 */
 	public static boolean testInService(int day, String sid) {
 		boolean res = false;
 		if (day==6)
@@ -20,6 +20,9 @@ class Data {
 		
 		return res;
 	}
+	/*
+	 * method to conver a int into a date
+	 */
 	public static String intToDate(int day) {
 		switch (day) {
 		case 0:
@@ -37,14 +40,15 @@ class Data {
 		case 6:
 			return "Sunday";			
 		default:
-			return "Error";
+			return "Error"; // return error otherwise
 		}
 	}
-	public static HashMap<String,String> csvFiles; 
-	//public static final String NYCROAD = "data/NYC/shp/roads.shp";
-	public static final String NYCROAD = "data/NYC/nyctsubwayroutes_100627/transformed.shp"; 
-	//public static final String WORLD = "data/50m_cultural/ne_50m_admin_0_sovereignty.shp";
-	public static final String WORLD = "data/TM_WORLD_BORDERS-0.3/transformedWorld.shp";	
+	public static HashMap<String,String> csvFiles;  // a map to store different csv file
+	public static final String NYCROAD = "data/NYC/nyctsubwayroutes_100627/transformed.shp"; // file of nyc road
+	public static final String WORLD = "data/TM_WORLD_BORDERS-0.3/transformedWorld.shp"; // file of world
+	/*
+	 * method to initialize the map of csv files
+	 */
 	public static void intializeCSVFile() {
 		csvFiles = new HashMap<String,String>();
 		csvFiles.put("CALENDAER","data/NYC/calendar.txt");

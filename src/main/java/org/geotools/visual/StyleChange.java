@@ -34,6 +34,9 @@ class StyleChange {
 		fillColor = fill;
 
 		Class geomType = schema.getGeometryDescriptor().getType().getBinding();
+		/*
+		 * change style of polygon, line and point respectively
+		 */
 		if (Polygon.class.isAssignableFrom(geomType)
 				|| MultiPolygon.class.isAssignableFrom(geomType)) {
 			return createPolygonStyle();
@@ -48,8 +51,7 @@ class StyleChange {
 	}
 
 	/**
-	 * Create a Style to draw polygon features with a thin blue outline and a
-	 * cyan fill
+	 * Create a Style to draw polygon features with given color
 	 */
 	private static Style createPolygonStyle() {
 
@@ -80,7 +82,7 @@ class StyleChange {
 	}
 
 	/**
-	 * Create a Style to draw line features as thin blue lines
+	 * Create a Style to draw line features
 	 */
 	private static Style createLineStyle() {
 		Stroke stroke = styleFactory.createStroke(
@@ -103,8 +105,7 @@ class StyleChange {
 	}
 
 	/**
-	 * Create a Style to draw point features as circles with blue outlines and
-	 * cyan fill
+	 * Create a Style to draw point features 
 	 */
 	private static Style createPointStyle() {
 		Graphic gr = styleFactory.createDefaultGraphic();

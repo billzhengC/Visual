@@ -13,16 +13,12 @@ import java.util.TreeMap;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
 import org.opengis.referencing.FactoryException;
-import org.opengis.referencing.NoSuchAuthorityCodeException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
 
 import com.opencsv.CSVReader;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineSegment;
-import com.vividsolutions.jts.geom.Point;
 
 class GTFSParser {
 	static ArrayList<Coordinate> shapePointList;
@@ -52,9 +48,15 @@ class GTFSParser {
 		return csvList;				
 	}
 	
+	/*
+	 *  parse CSV file into a map (tripid-trajectory)
+	 */
+	
 	public static HashMap<String,Trajectory> parseTrips(HashMap<String,String> csvFileNames) throws IOException, FactoryException, TransformException {
 		trajMap = new HashMap<String,Trajectory>();
-		// read input from CSV
+		/*
+		 *  read input from CSV
+		 */
 		tripList = readCSV(new FileReader(csvFileNames.get("TRIPS")));
 		serviceList = readCSV(new FileReader(csvFileNames.get("CALENDAER")));
 		shapeList = readCSV(new FileReader(csvFileNames.get("SHAPES")));
@@ -62,7 +64,9 @@ class GTFSParser {
 		stoptimeList = readCSV(new FileReader(csvFileNames.get("STOPTIMES")));
 		// intermediate product: connection between shapeid and tripid
 		HashMap<String,ArrayList<String>> shapeTripMap = new HashMap<String,ArrayList<String>>(); 
-		//get trip info and create hashmap for all trips 
+		/*
+		 * get trip info and create hashmap for all trips 
+		 */
 		for (Map<String,String> trip: tripList) {
 			String tripid = trip.get("trip_id");
 			String serviceid = trip.get("service_id");
@@ -191,21 +195,17 @@ class GTFSParser {
 		return dest;
 	}
 	
+	/*
+	 * get linear interpolation of coordinates
+	 */
 	public static Coordinate getLinearCoordinate(Coordinate a,Long ta, Coordinate b, Long tb, Long t){
-/*		CoordinateReferenceSystem wgsCRS = CRS.decode( "EPSG:4326" ); // WGS84 CoordinateReferenceSystem
-		CoordinateReferenceSystem merCRS = CRS.decode( "EPSG:3857" ); // Mercator 
-		MathTransform wgsToMerTransform = CRS.findMathTransform(wgsCRS, merCRS, true);
-		MathTransform merToWgsTransform = CRS.findMathTransform(merCRS, wgsCRS, true);
-		JTS.transform(a,a, wgsToMerTransform);
-		JTS.transform(b,b, wgsToMerTransform);
-		Coordinate dest = new Coordinate(a.x+(t-ta)*(b.x-a.x)/(tb-ta),a.y+(t-ta)*(b.y-a.y)/(tb-ta));
-		JTS.transform(dest,dest, merToWgsTransform);
-		return dest;*/
 		return new Coordinate(a.x+(t-ta)*(b.x-a.x)/(tb-ta),a.y+(t-ta)*(b.y-a.y)/(tb-ta));	
 	}
 	
 	
-	// convert "HH:MM:SS" into the seconds elasped from midnight
+	/*
+	 *  convert "HH:MM:SS" into the seconds elasped from midnight
+	 */
 	public static Long toElapsedTime(String time) {
 		StringTokenizer timeToken = new StringTokenizer(time,":");
 		Long hours = Long.valueOf(timeToken.nextToken());
@@ -215,22 +215,33 @@ class GTFSParser {
 	}
 }
 
+/*
+ * Trajectory is a class stores information of the trajectory of a trip
+ */
+
 class Trajectory {
-	String trip_id;
-	String service_id;
+	String trip_id; // trip id
+	String service_id; // service
+	// construtor: initialize trip id and service id
 	Trajectory (String trip_id,String service_id) {
 		this.service_id = service_id;
 		this.trip_id = trip_id;
 	}   
-	SortedMap<Long,Coordinate> trajectory = new TreeMap<Long,Coordinate>();
-	SortedMap<Long,String> trajectoryWithName = new TreeMap<Long,String>();
+	SortedMap<Long,Coordinate> trajectory = new TreeMap<Long,Coordinate>(); // tree map which projects a time to a location of the vehicles
+	SortedMap<Long,String> trajectoryWithName = new TreeMap<Long,String>(); // tree map which projects a time to the name of stops
 	
+	/*
+	 *  get position of the vehicle at a given time
+	 */
 	Coordinate getPosition(Long time) throws FactoryException, TransformException {
 		if (!this.isActive(time)) return null;
 		Coordinate coor = null;
 		Long thisTime, nextTime;
 		Iterator<Long> keyItr= trajectory.keySet().iterator();
 		thisTime = keyItr.next();
+		/*
+		 * use linear interporlation to calculation the location 
+		 */
 		while (keyItr.hasNext()) {
 			nextTime = keyItr.next();
 			if (time<nextTime) {
@@ -241,29 +252,46 @@ class Trajectory {
 		}
 		return coor;
 	}
+	/*
+	 *  test if the vehicle is active at a given time
+	 */
 	boolean isActive(Long time) {
 		if (trajectory.firstKey() <= time && time<=trajectory.lastKey()) return true;
 		else return false;
 	}
 }
 
+/*
+ *  the transit contains infomration about the vehicles
+ */
 class Transit {
-	public static ArrayList<Trajectory> allTraj;
-	public static HashMap<String,Long> tripTimeStartMap = new HashMap<String,Long>();
-	public static HashMap<String,Long> tripTimeEndMap = new HashMap<String,Long>();
+	public static ArrayList<Trajectory> allTraj; // list of all trajectory
+	public static HashMap<String,Long> tripTimeStartMap = new HashMap<String,Long>(); // map a trip with its start time
+	public static HashMap<String,Long> tripTimeEndMap = new HashMap<String,Long>(); // map a trip with its end time
+	/*
+	 * intialize tripTimeStartMap&tripTimeEndMap
+	 */
 	public static void intializeTripTimeMap() {
-		for (Trajectory t:allTraj) {
-			String tripid = t.trip_id;
-			Long timeStart = new Long(t.trajectory.firstKey());
-			Long timeEnd = new Long(t.trajectory.lastKey());
+		for (Trajectory t:allTraj) { // loop over all trajectory
+			String tripid = t.trip_id; // get trip id
+			Long timeStart = new Long(t.trajectory.firstKey()); // get start time
+			Long timeEnd = new Long(t.trajectory.lastKey()); // get end time
+			/*
+			 * put into two maps
+			 */
 			tripTimeStartMap.put(tripid, timeStart);
 			tripTimeEndMap.put(tripid, timeEnd);
 		}
 	}
+	/*
+	 * a method to return all active trajtories at a given time
+	 */
 	public static ArrayList<Trajectory> activeTrajectories(Long time) {
-		ArrayList<Trajectory> activeTraj = new ArrayList<Trajectory>();
+		ArrayList<Trajectory> activeTraj = new ArrayList<Trajectory>(); // intialize the list
+		// loop over all trajectory
 		for (Trajectory traj: allTraj) {
-			Long timeStart = tripTimeStartMap.get(traj.trip_id);
+			// if the given time falls in the range of a vehicle's active time, then add it to the list
+			Long timeStart = tripTimeStartMap.get(traj.trip_id); 
 			Long timeEnd = tripTimeEndMap.get(traj.trip_id);
 			if (timeStart<=time && time<=timeEnd) {
 				activeTraj.add(traj);
