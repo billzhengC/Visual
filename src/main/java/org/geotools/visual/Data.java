@@ -2,6 +2,9 @@ package org.geotools.visual;
 
 import java.util.HashMap;
 
+/*
+ * Data is a also helper class which provides GTFS.java the data path and other supportive methods
+ */
 class Data {
 	public static final int frameHeight = 700; // height of the frame
 	

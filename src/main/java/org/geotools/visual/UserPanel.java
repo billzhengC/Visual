@@ -1,10 +1,6 @@
 package org.geotools.visual;
 import javax.swing.*;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
-import javax.swing.text.StyledDocument;
-
-
+import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -79,6 +75,9 @@ class UserPanel {
 		resultScroll.setPreferredSize(new Dimension(width, 350));
 		dataPanel.add(resultScroll);
 		
+		/*
+		 * add panels to the frame
+		 */
 		anaFrame.add(curVehiclePanel,BorderLayout.NORTH);
 		anaFrame.add(selectPanel,BorderLayout.WEST);
 		anaFrame.add(dataPanel,BorderLayout.SOUTH);
@@ -100,12 +99,14 @@ class UserPanel {
 		curTraj = GTFSParser.trajMap.get(curTripid);;
 		resultText.setText("");
 		StyledDocument doc = resultText.getStyledDocument();
-	
 		//  Define a keyword attribute
 		SimpleAttributeSet keyWord = new SimpleAttributeSet();
 		StyleConstants.setForeground(keyWord, Color.RED);
 		StyleConstants.setBold(keyWord, true);
 		resultText.setText("");
+		/*
+		 * get vehicle information
+		 */
 		for (Map.Entry<Long, String> entry:curTraj.trajectoryWithName.entrySet()) {
 			String append = curGTFS.toStandardTime(entry.getKey());
 			append += " " + entry.getValue() + "\n";

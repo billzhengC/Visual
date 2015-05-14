@@ -4,19 +4,15 @@ package org.geotools.visual;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-
 // import swing and awt
 import javax.swing.*;
 import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
-
 // import Geotools
 import org.geotools.data.FileDataStore;
 import org.geotools.data.FileDataStoreFinder;
@@ -33,14 +29,11 @@ import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.operation.TransformException;
-
-
 // import JTS Topology Suite
 import com.vividsolutions.jts.geom.*;
 
-/**
- * @author Bill
- * @GFTS Displays a window showing the active vehicles at any time
+/*
+ * GTFS is the main class of the program which receives processed data from GTFSParser and visualize it using Geotools
  */
 public class GTFS implements ActionListener {
 	ArrayList<Trajectory> currentTraj; // list of the current active vehicles

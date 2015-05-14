@@ -1,25 +1,20 @@
 package org.geotools.visual;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.StringTokenizer;
-import java.util.TreeMap;
-
+import java.io.*;
+import java.util.*;
+// import geotools
 import org.geotools.geometry.jts.JTS;
 import org.geotools.referencing.CRS;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
-
-import com.opencsv.CSVReader;
 import com.vividsolutions.jts.geom.Coordinate;
+// import csv reader
+import com.opencsv.CSVReader;
 
+/*
+ * GTFSParser converts the raw GTFS data into list of trajectory class
+ */
 class GTFSParser {
 	static ArrayList<Coordinate> shapePointList;
 	static ArrayList<Map<String,String>> tripList;
@@ -29,29 +24,31 @@ class GTFSParser {
 	static ArrayList<Map<String,String>> stoptimeList;
 	static HashMap<String,Trajectory> trajMap;
 	
-	
+	/*
+	 * read CSV file into an array list
+	 */
 	protected static ArrayList<Map<String,String>> readCSV(Reader csv) throws IOException {
 		ArrayList<Map<String,String>> csvList = new ArrayList<Map<String,String>>();
 		CSVReader myreader = new CSVReader(csv);
-		String[] firstLine = myreader.readNext();
+		String[] firstLine = myreader.readNext(); // store item title
 		int itemNum = firstLine.length;
 		Map<String,String> lineMap;
 		String[] nextLine;
+		// read file and add it to the list
 		while ((nextLine = myreader.readNext()) != null) {
 			lineMap = new HashMap<String,String>();
 			for (int i=0; i<itemNum; i++) {
-				lineMap.put(firstLine[i], nextLine[i]);
+				lineMap.put(firstLine[i], nextLine[i]); // put item and its title into a map
 			}
 			csvList.add(lineMap);
 		}
-		myreader.close();
+		myreader.close(); // close reader
 		return csvList;				
 	}
 	
 	/*
 	 *  parse CSV file into a map (tripid-trajectory)
 	 */
-	
 	public static HashMap<String,Trajectory> parseTrips(HashMap<String,String> csvFileNames) throws IOException, FactoryException, TransformException {
 		trajMap = new HashMap<String,Trajectory>();
 		/*
@@ -84,8 +81,10 @@ class GTFSParser {
 			Trajectory myTraj = new Trajectory(tripid,serviceid);
 			trajMap.put(tripid, myTraj);
 		}
-		// intermediate product: use stopid to connect stop time and stop location
-	    // define inner class Tuple to combine time and tripid
+		/* 
+		 * intermediate product: use stopid to connect stop time and stop location
+		 * define inner class Tuple to combine time and tripid
+		 */
 		class Tuple {
 			final Long time;
 			final String tripid;
@@ -95,29 +94,32 @@ class GTFSParser {
 			}
 		}
 		HashMap<String,ArrayList<Tuple>> stopIdTupleMap = new HashMap<String,ArrayList<Tuple>>(); 
-		// import time of each stop
+		/*
+		 *  import time of each stop
+		 */
 		for (Map<String,String> stoptime: stoptimeList) {
 			String tripid = stoptime.get("trip_id");
 			String stopid = stoptime.get("stop_id");
-			Long time = toElapsedTime(stoptime.get("departure_time"));
+			Long time = toElapsedTime(stoptime.get("departure_time")); 
 			trajMap.get(tripid).trajectory.put(time, null);
 			trajMap.get(tripid).trajectoryWithName.put(time, null);
 			// fill the intermediate map
 			ArrayList<Tuple> temp_arrL;
 			if (stopIdTupleMap.get(stopid)==null) temp_arrL = new ArrayList<Tuple>();
 			else temp_arrL = stopIdTupleMap.get(stopid);
-			temp_arrL.add(new Tuple(time,tripid));
-			stopIdTupleMap.put(stopid, temp_arrL);
+			temp_arrL.add(new Tuple(time,tripid)); 
+			stopIdTupleMap.put(stopid, temp_arrL); // put into stopIdTupleMap
 		}
-		// import location of each stop
+		/*
+		 *  import location of each stop
+		 */
 		for (Map<String,String> stop: stopList) {
 			String stopid = stop.get("stop_id");
-			double stop_lat = Double.parseDouble(stop.get("stop_lat"));
-			double stop_lon = Double.parseDouble(stop.get("stop_lon"));
-			// Coordinate loc = new Coordinate(stop_lon,stop_lat);
+			double stop_lat = Double.parseDouble(stop.get("stop_lat")); // get latitude
+			double stop_lon = Double.parseDouble(stop.get("stop_lon")); // get longitude
 			Coordinate loc = new Coordinate(stop_lat,stop_lon);
 			loc = transCoor(loc);
-				if (stopIdTupleMap.get(stopid)==null) continue; //****TEST
+			if (stopIdTupleMap.get(stopid)==null) continue; // deal with data mismatch
 			ArrayList<Tuple> tupleList= stopIdTupleMap.get(stopid);
 			for (Tuple t:tupleList ) {
 				String tripid = t.tripid;
@@ -127,47 +129,16 @@ class GTFSParser {
 			}
 		}
 
-		
+		/*
+		 *  create a list of shape points
+		 */
 		shapePointList = new ArrayList<Coordinate>();
 		for (Map<String,String> shape: shapeList) {
-			double shape_lat = Double.parseDouble(shape.get("shape_pt_lat"));
-			double shape_lon = Double.parseDouble(shape.get("shape_pt_lon"));
-			Coordinate loc_temp = transCoor(new Coordinate(shape_lat,shape_lon));
+			double shape_lat = Double.parseDouble(shape.get("shape_pt_lat")); // get latitude
+			double shape_lon = Double.parseDouble(shape.get("shape_pt_lon")); // get longitude
+			Coordinate loc_temp = transCoor(new Coordinate(shape_lat,shape_lon)); // put into a coordinate 
 			shapePointList.add(loc_temp);
 		}
-		
-		
-		
-/*		// construct a shape_id --> coordinates map
-		HashMap<String,ArrayList<Coordinate>> shapePointMap = new HashMap<String,ArrayList<Coordinate>>();
-		for (Map<String,String> shape: shapeList) {
-			String shapeid = shape.get("shape_id");
-			double shape_lat = Double.parseDouble(shape.get("shape_pt_lat"));
-			double shape_lon = Double.parseDouble(shape.get("shape_pt_lon"));
-			Coordinate loc_temp = new Coordinate(shape_lon,shape_lat);
-			if (!shapePointMap.containsKey(shapeid)) {
-				shapePointMap.put(shapeid, new ArrayList<Coordinate>());
-				shapePointMap.get(shapeid).add(loc_temp);				
-			}
-			else {
-				shapePointMap.get(shapeid).add(loc_temp);
-			}
-		}
-		// iterate over the map
-		for (Map.Entry<String,ArrayList<Coordinate>> entry: shapePointMap.entrySet()) {
-			String shapeid = entry.getKey();
-			ArrayList<Coordinate> cos = entry.getValue();
-			ArrayList<String> tripWithSameShape = shapeTripMap.get(shapeid);
-			if (tripWithSameShape==null) continue; //TEST**
-			for (String tripid_temp: tripWithSameShape) {
-				trajMap.get(tripid_temp).trajectory = trajIntoShape(trajMap.get(tripid_temp).trajectory,cos);
-			}
-		}		
-		//**TEST
-		for (Map.Entry<String,Trajectory> entry: trajMap.entrySet()) {
-			System.out.print(entry.getKey()+"  ");
-			System.out.println(entry.getValue().trajectory);
-		}*/
 		return trajMap;
 	}
 	
