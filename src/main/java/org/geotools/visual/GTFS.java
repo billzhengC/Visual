@@ -208,7 +208,7 @@ public class GTFS implements ActionListener {
          */
 		System.out.println("Timer starts");
 		timer.start(); // start timer
-		currentTime = firstTime; //  initialize current time
+		currentTime = firstTime+3600; //  initialize current time
 		showAnalysis(); // display user panel
 	}
 
@@ -283,7 +283,7 @@ public class GTFS implements ActionListener {
 			 */
 			if (currentTime > lastTime) {
 				currentDate = (currentDate+1)%7;
-				currentTime = firstTime;
+				currentTime = firstTime+3600;
 				timeLabel.setText("Current Time: " + Data.intToDate(currentDate) + " "+ toStandardTime(currentTime));
 				//timeChangeFlag = false;
 				System.out.println("Next day");

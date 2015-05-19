@@ -24,7 +24,7 @@ class UserPanel {
 		 */
 		anaFrame = new JFrame("Data Analysis");
 		anaFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		anaFrame.setLocation(240, 300); // set location
+		anaFrame.setLocation(200, 300); // set location
 		anaFrame.setSize(width, Data.frameHeight); // set size 
 		anaFrame.requestFocus(); 
 		anaFrame.addMouseListener(new MouseAdapter() {
